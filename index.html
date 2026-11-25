@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Officer QR Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f1f5f9;
+    }
+    .container {
+      max-width: 450px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    button {
+      padding: 12px 20px;
+      margin: 8px;
+      background: #17365d;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    #reader {
+      width: 100%;
+      margin-top: 15px;
+    }
+    #message {
+      margin-top: 15px;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>OFFICER QR SCANNER</h2>
+    <p>Scan the Officer Inspection location QR code.</p>
+
+    <div id="reader"></div>
+
+    <p id="message">Ready to scan.</p>
+
+    <button onclick="startScanner()">START SCANNER</button>
+    <button onclick="stopScanner()">STOP SCANNER</button>
+  </div>
+
+  <script>
+    let scanner = null;
+    let running = false;
+
+    function startScanner() {
+      if (running) return;
+
+      scanner = new Html5Qrcode("reader");
+
+      scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        function(decodedText) {
+          const parts = decodedText.split("|");
+
+          const validPosts = [
+            "OFP-001", "OFP-002", "OFP-003",
+            "OFP-004", "OFP-005", "OFP-006",
+            "OFP-007"
+          ];
+
+          if (
+            parts.length !== 2 ||
+            parts[0] !== "OFFICER" ||
+            !validPosts.includes(parts[1])
+          ) {
+            document.getElementById("message").textContent =
+              "Invalid Officer Inspection QR Code.";
+            return;
+          }
+
+          document.getElementById("message").textContent =
+            "QR scanned successfully: " + parts[1];
+
+          scanner.stop().then(function() {
+            running = false;
+
+            if (window.opener) {
+              window.opener.postMessage({
+                type: "OFFICER_QR_SCANNED",
+                postId: parts[1]
+              }, "*");
+
+              window.close();
+            }
+          });
+        },
+        function() {}
+      ).then(function() {
+        running = true;
+        document.getElementById("message").textContent =
+          "Camera ready. Scan the QR code.";
+      }).catch(function(error) {
+        document.getElementById("message").textContent =
+          "Camera error: " + error;
+      });
+    }
+
+    function stopScanner() {
+      if (scanner && running) {
+        scanner.stop().then(function() {
+          running = false;
+          document.getElementById("message").textContent =
+            "Scanner stopped.";
+        });
+      }
+    }
+  </script>
+</body>
+</html>
